@@ -160,6 +160,43 @@ describe('amortization', () => {
   });
 });
 
+// ─── Mortgage payoff ──────────────────────────────────────────────────────────
+
+describe('mortgage payoff', () => {
+  // 0% rate, 5yr term, 7yr horizon: P&I = 160k/60 = 2666.67/mo = 32,000/yr,
+  // loan fully amortized at the end of year 5 → no P&I in years 6 and 7.
+  const PAYOFF = { ...BARE, mortgageRate: 0, loanTermYears: 5, timeHorizonYears: 7 };
+
+  it('charges P&I every year up to and including the loan term', () => {
+    const r = calculate(PAYOFF);
+    for (let i = 1; i <= 5; i++) {
+      expect(yr(r, i).annualMortgage).toBeCloseTo(32_000, -1);
+    }
+  });
+
+  it('charges zero P&I after the loan is paid off', () => {
+    const r = calculate(PAYOFF);
+    expect(yr(r, 5).mortgageBalance).toBe(0);
+    expect(yr(r, 6).annualMortgage).toBe(0);
+    expect(yr(r, 7).annualMortgage).toBe(0);
+  });
+
+  it('buyer annual cash cost drops by the P&I amount once the loan ends', () => {
+    const r = calculate(PAYOFF);
+    // Year 6 vs year 5: only the ~32k P&I should disappear (other costs are flat at 0 in BARE).
+    const drop = yr(r, 5).annualBuyerCashCost - yr(r, 6).annualBuyerCashCost;
+    expect(drop).toBeCloseTo(32_000, -1);
+  });
+
+  it('keeps charging P&I for the whole horizon when the loan never finishes', () => {
+    // Loan term (30) longer than horizon (5): mortgage is still being paid every year.
+    const r = calculate({ ...BARE, loanTermYears: 30, timeHorizonYears: 5 });
+    for (let i = 1; i <= 5; i++) {
+      expect(yr(r, i).annualMortgage).toBeGreaterThan(0);
+    }
+  });
+});
+
 // ─── Home appreciation ────────────────────────────────────────────────────────
 
 describe('home appreciation', () => {

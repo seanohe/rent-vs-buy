@@ -223,8 +223,8 @@ export default function App() {
             </div>
             <div className="metric">
               <span className="metric-label">Monthly Payment</span>
-              <span className="metric-value">{fmtDollar(summary.monthlyMortgage)}</span>
-              <span className="metric-sub">principal + interest</span>
+              <span className="metric-value">{fmtDollar(summary.monthlyCarryingCost)}</span>
+              <span className="metric-sub">P&amp;I + tax + insurance + HOA + PMI</span>
             </div>
             <div className="metric">
               <span className="metric-label">Break-Even Year</span>
@@ -293,6 +293,30 @@ export default function App() {
                 const hasSavingsDiscount = inputs.renterSavingsRate < 100;
                 return (
                   <>
+                    <h4>Buyer: Annual Cost of Ownership Breakdown</h4>
+                    <p className="chart-note">
+                      Every ownership cost stacked by year: mortgage P&amp;I, property tax, maintenance, insurance, HOA, and PMI.
+                      Maintenance is included here (a budgeted reserve) even though the headline "Monthly Payment" tile excludes it.
+                    </p>
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={costYears} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                        <XAxis dataKey="year" tick={{ fill: '#aaa' }} />
+                        <YAxis tickFormatter={(v) => '$' + (v / 1000).toFixed(0) + 'k'} tick={{ fill: '#aaa' }} width={70} />
+                        <Tooltip
+                          formatter={(v, name) => [fmtDollar(v), name]}
+                          labelFormatter={(v) => `Year ${v}`}
+                        />
+                        <Legend />
+                        <Bar dataKey="annualMortgage" name="Mortgage (P&I)" stackId="c" fill="#4f9cf0" />
+                        <Bar dataKey="annualPropertyTax" name="Property Tax" stackId="c" fill="#f0c040" />
+                        <Bar dataKey="annualMaintenance" name="Maintenance" stackId="c" fill="#c084fc" />
+                        <Bar dataKey="annualInsurance" name="Insurance" stackId="c" fill="#6dcf7f" />
+                        <Bar dataKey="annualHOA" name="HOA" stackId="c" fill="#f87171" />
+                        <Bar dataKey="yearlyPMI" name="PMI" stackId="c" fill="#fb923c" />
+                      </BarChart>
+                    </ResponsiveContainer>
+
                     <h4>Renter: Surplus Invested vs. Unaccounted</h4>
                     <p className="chart-note">
                       Each year the renter spends less than the buyer, the surplus is split by the savings rate.

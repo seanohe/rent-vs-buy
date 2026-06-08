@@ -80,6 +80,19 @@ export function calculate(inputs) {
   const buyingClosingCosts = homePrice * (buyingClosingCostPct / 100);
   const monthlyMortgage = monthlyPayment(loanAmount, mortgageRate, loanTermYears);
   const monthlyRate = mortgageRate / 100 / 12;
+
+  // Representative (month 1) monthly carrying cost for the dashboard tile.
+  // Includes P&I + property tax + HOA + insurance + PMI — but NOT maintenance
+  // (maintenance is a budgeted reserve, not a fixed bill, so it's shown only in
+  // the costs-breakdown chart, not the headline "monthly payment").
+  const initialMonthlyPMI =
+    loanAmount / homePrice > 0.8 ? (loanAmount * (pmiRate / 100)) / 12 : 0;
+  const monthlyCarryingCost =
+    monthlyMortgage +
+    (homePrice * (propertyTaxRate / 100)) / 12 +
+    hoaMonthly +
+    homeInsuranceMonthly +
+    initialMonthlyPMI;
   const savingsFraction = (renterSavingsRate ?? 100) / 100;
 
   // Renter invests the down payment + closing costs the buyer spends upfront.
@@ -143,11 +156,15 @@ export function calculate(inputs) {
 
       renterYearlyCost += currentRent;
 
-      // Total buyer monthly cash outflow (mortgage + taxes + HOA + maintenance + insurance + PMI)
+      // Total buyer monthly cash outflow (mortgage + taxes + HOA + maintenance + insurance + PMI).
+      // Use the actual P&I paid this month (interest + principal), not the fixed nominal
+      // payment: this naturally drops to $0 once the loan is paid off, so the buyer
+      // correctly enjoys no mortgage payment after the loan term ends.
+      const monthlyMortgagePaid = interestPayment + principalPayment;
       const monthlyPropertyTax = (homePrice * (propertyTaxRate / 100)) / 12;
       const monthlyMaintenance = (homePrice * (maintenancePct / 100)) / 12;
       const buyerMonthlyCash =
-        monthlyMortgage +
+        monthlyMortgagePaid +
         monthlyPropertyTax +
         hoaMonthly +
         monthlyMaintenance +
@@ -190,7 +207,7 @@ export function calculate(inputs) {
 
     const yearlyTaxSaving = deductMortgageInterest ? yearlyInterest * (marginalTaxRate / 100) : 0;
     const yearlyBuyerCost =
-      monthlyMortgage * 12 +
+      yearlyInterest + yearlyPrincipal +
       homePrice * (propertyTaxRate / 100) +
       homePrice * (maintenancePct / 100) +
       homeInsuranceMonthly * 12 +
@@ -215,6 +232,12 @@ export function calculate(inputs) {
       yearlyPrincipal: Math.round(yearlyPrincipal),
       yearlyPMI: Math.round(yearlyPMI),
       yearlyTaxSaving: Math.round(yearlyTaxSaving),
+      // Ownership cost components (annual) for the cost-breakdown chart.
+      annualMortgage: Math.round(yearlyInterest + yearlyPrincipal),
+      annualPropertyTax: Math.round(homePrice * (propertyTaxRate / 100)),
+      annualMaintenance: Math.round(homePrice * (maintenancePct / 100)),
+      annualInsurance: Math.round(homeInsuranceMonthly * 12),
+      annualHOA: Math.round(hoaMonthly * 12),
       annualRent: Math.round(currentRent * 12 / (1 + rentEscalationRate / 100)),
       annualBuyerCashCost: Math.round(yearlyBuyerCost),
       annualRenterCost: Math.round(renterYearlyCost),
@@ -244,6 +267,7 @@ export function calculate(inputs) {
       downPayment: Math.round(downPayment),
       buyingClosingCosts: Math.round(buyingClosingCosts),
       monthlyMortgage: Math.round(monthlyMortgage),
+      monthlyCarryingCost: Math.round(monthlyCarryingCost),
       loanAmount: Math.round(loanAmount),
       finalBuyerNetWorth: finalYear.buyerNetWorth,
       finalRenterNetWorth: finalYear.renterNetWorth,
